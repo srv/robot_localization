@@ -104,12 +104,12 @@ namespace RosFilterUtilities
         tf2::fromMsg(buffer.lookupTransform(targetFrame, sourceFrame, ros::Time(0)).transform,
                      targetFrameTrans);
 
-        ROS_WARN_STREAM_THROTTLE(2.0, "Transform from " << sourceFrame << " to " << targetFrame <<
+        ROS_WARN_STREAM_THROTTLE(2.0, "[" << ros::this_node::getName() << ":]" << " Transform from " << sourceFrame << " to " << targetFrame <<
                                       " was unavailable for the time requested. Using latest instead.\n");
       }
       catch(tf2::TransformException &ex)
       {
-        ROS_WARN_STREAM_THROTTLE(2.0, "Could not obtain transform from " << sourceFrame <<
+        ROS_WARN_STREAM_THROTTLE(2.0, "[" << ros::this_node::getName() << ":]" << " Could not obtain transform from " << sourceFrame <<
                                       " to " << targetFrame << ". Error was " << ex.what() << "\n");
 
         retVal = false;

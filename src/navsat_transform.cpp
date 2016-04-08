@@ -118,7 +118,7 @@ namespace RobotLocalization
         std::ostringstream ostr;
         if (datum_config.size() == 4)
         {
-          ROS_WARN_STREAM("No base_link_frame specified for the datum (parameter 5).");
+          ROS_WARN_STREAM("[" << ros::this_node::getName() << ":]" << " No base_link_frame specified for the datum (parameter 5).");
           ostr << datum_config[0] << " " << datum_config[1] << " " << datum_config[2] << " " << datum_config[3];
           std::istringstream istr(ostr.str());
           istr >> dataum_law >> datum_lon >> datum_yaw >> world_frame_id_;
@@ -155,7 +155,7 @@ namespace RobotLocalization
       }
       catch (XmlRpc::XmlRpcException &e)
       {
-        ROS_ERROR_STREAM("ERROR reading sensor config: " << e.getMessage() <<
+        ROS_ERROR_STREAM("[" << ros::this_node::getName() << ":]" << " ERROR reading sensor config: " << e.getMessage() <<
                          " for process_noise_covariance (type: " << datum_config.getType() << ")");
       }
     }
@@ -262,7 +262,7 @@ namespace RobotLocalization
        */
       imu_yaw += (magnetic_declination_ + yaw_offset_);
 
-      ROS_INFO_STREAM("Corrected for magnetic declination of " << std::fixed << magnetic_declination_ <<
+      ROS_INFO_STREAM("[" << ros::this_node::getName() << ":]" << " Corrected for magnetic declination of " << std::fixed << magnetic_declination_ <<
                       " and user-specified offset of " << yaw_offset_ << ". Transform heading factor is now " << imu_yaw);
 
       // Convert to tf-friendly structures
@@ -280,8 +280,8 @@ namespace RobotLocalization
 
       utm_world_trans_inverse_ = utm_world_transform_.inverse();
 
-      ROS_INFO_STREAM("Transform world frame pose is: " << transform_world_pose_);
-      ROS_INFO_STREAM("World frame->utm transform is " << utm_world_transform_);
+      ROS_INFO_STREAM("[" << ros::this_node::getName() << ":]" << " Transform world frame pose is: " << transform_world_pose_);
+      ROS_INFO_STREAM("[" << ros::this_node::getName() << ":]" << " World frame->utm transform is " << utm_world_transform_);
 
       transform_good_ = true;
 
@@ -374,7 +374,7 @@ namespace RobotLocalization
     }
     else
     {
-      ROS_WARN_STREAM("Unable to obtain " << base_link_frame_id_ << "->" << gps_frame_id_ <<
+      ROS_WARN_STREAM("[" << ros::this_node::getName() << ":]" << " Unable to obtain " << base_link_frame_id_ << "->" << gps_frame_id_ <<
         " transform. Will assume navsat device is mounted at vehicle's origin");
 
       robot_utm_pose = gps_utm_pose;
@@ -411,13 +411,13 @@ namespace RobotLocalization
       }
       else
       {
-        ROS_WARN_STREAM_THROTTLE(5.0, "Could not obtain " << world_frame_id_ << "->" << base_link_frame_id_ <<
+        ROS_WARN_STREAM_THROTTLE(5.0, "[" << ros::this_node::getName() << ":]" << " Could not obtain " << world_frame_id_ << "->" << base_link_frame_id_ <<
           " transform. Will not remove offset of navsat device from robot's origin.");
       }
     }
     else
     {
-      ROS_WARN_STREAM_THROTTLE(5.0, "Could not obtain " << base_link_frame_id_ << "->" << gps_frame_id_ <<
+      ROS_WARN_STREAM_THROTTLE(5.0, "[" << ros::this_node::getName() << ":]" << " Could not obtain " << base_link_frame_id_ << "->" << gps_frame_id_ <<
         " transform. Will not remove offset of navsat device from robot's origin.");
     }
   }
@@ -491,7 +491,7 @@ namespace RobotLocalization
         RosFilterUtilities::quatToRPY(target_frame_trans.getRotation(), roll_offset, pitch_offset, yaw_offset);
         RosFilterUtilities::quatToRPY(transform_orientation_, roll, pitch, yaw);
 
-        ROS_DEBUG_STREAM("Initial orientation is " << transform_orientation_);
+        ROS_DEBUG_STREAM("[" << ros::this_node::getName() << ":]" << " Initial orientation is " << transform_orientation_);
 
         // Apply the offset (making sure to bound them), and throw them in a vector
         tf2::Vector3 rpy_angles(FilterUtilities::clampRotation(roll - roll_offset),
@@ -506,7 +506,7 @@ namespace RobotLocalization
         rpy_angles = mat * rpy_angles;
         transform_orientation_.setRPY(rpy_angles.getX(), rpy_angles.getY(), rpy_angles.getZ());
 
-        ROS_DEBUG_STREAM("Initial corrected orientation roll, pitch, yaw is (" <<
+        ROS_DEBUG_STREAM("[" << ros::this_node::getName() << ":]" << " Initial corrected orientation roll, pitch, yaw is (" <<
                          rpy_angles.getX() << ", " << rpy_angles.getY() << ", " << rpy_angles.getZ() << ")");
 
         has_transform_imu_ = true;
@@ -649,9 +649,9 @@ namespace RobotLocalization
     double utm_y = 0;
     NavsatConversions::LLtoUTM(msg->latitude, msg->longitude, utm_y, utm_x, utm_zone_);
 
-    ROS_INFO_STREAM("Datum (latitude, longitude, altitude) is (" << std::fixed << msg->latitude << ", " <<
+    ROS_INFO_STREAM("[" << ros::this_node::getName() << ":]" << " Datum (latitude, longitude, altitude) is (" << std::fixed << msg->latitude << ", " <<
                     msg->longitude << ", " << msg->altitude << ")");
-    ROS_INFO_STREAM("Datum UTM coordinate is (" << std::fixed << utm_x << ", " << utm_y << ")");
+    ROS_INFO_STREAM("[" << ros::this_node::getName() << ":]" << " Datum UTM coordinate is (" << std::fixed << utm_x << ", " << utm_y << ")");
 
     transform_utm_pose_.setOrigin(tf2::Vector3(utm_x, utm_y, msg->altitude));
     transform_utm_pose_.setRotation(tf2::Quaternion::getIdentity());
@@ -666,7 +666,7 @@ namespace RobotLocalization
     base_link_frame_id_ = msg->child_frame_id;
     has_transform_odom_ = true;
 
-    ROS_INFO_STREAM("Initial odometry pose is " << transform_world_pose_);
+    ROS_INFO_STREAM("[" << ros::this_node::getName() << ":]" << " Initial odometry pose is " << transform_world_pose_);
 
     // Users can optionally use the (potentially fused) heading from
     // the odometry source, which may have multiple fused sources of
