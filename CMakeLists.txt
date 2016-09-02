@@ -50,7 +50,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS
     include
-  LIBRARIES 
+  LIBRARIES
     ekf
     filter_base
     filter_utilities
@@ -92,8 +92,8 @@ add_library(ros_filter src/ros_filter.cpp)
 add_library(navsat_transform src/navsat_transform.cpp)
 
 # Dependencies
-add_dependencies(filter_base robot_localization_gencpp)
-add_dependencies(navsat_transform robot_localization_gencpp)
+add_dependencies(filter_base ${catkin_EXPORTED_TARGETS})
+add_dependencies(navsat_transform ${catkin_EXPORTED_TARGETS})
 
 # Executables
 add_executable(ekf_localization_node src/ekf_localization_node.cpp)
