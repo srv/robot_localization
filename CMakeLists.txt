@@ -93,7 +93,7 @@ add_library(navsat_transform src/navsat_transform.cpp)
 
 # Dependencies
 add_dependencies(filter_base ${catkin_EXPORTED_TARGETS})
-add_dependencies(navsat_transform ${catkin_EXPORTED_TARGETS})
+add_dependencies(navsat_transform ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # Executables
 add_executable(ekf_localization_node src/ekf_localization_node.cpp)
