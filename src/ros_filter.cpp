@@ -1765,6 +1765,7 @@ namespace RobotLocalization
 
     // Publisher
     ros::Publisher positionPub = nh_.advertise<nav_msgs::Odometry>("odometry/filtered", 20);
+    ros::Publisher pathPub = nh_.advertise<nav_msgs::Path>("path", 1);
     tf2_ros::TransformBroadcaster worldTransformBroadcaster;
 
     // Optional acceleration publisher
@@ -1871,6 +1872,32 @@ namespace RobotLocalization
 
         // Fire off the position and the transform
         positionPub.publish(filteredPosition);
+
+        nav_msgs::Path robotPath;
+        std::vector<EkfState> poses = filter_.getStates();
+        for (size_t i = 0; i < poses.size(); i++)
+        {
+          Eigen::VectorXd state = poses[i].GetState();
+
+          // Convert from roll, pitch, and yaw back to quaternion for
+          // orientation values
+          tf2::Quaternion quat;
+          quat.setRPY(state(StateMemberRoll), state(StateMemberPitch), state(StateMemberYaw));
+
+          // Convert to PoseStamped and push to path vector
+          geometry_msgs::PoseStamped ps;
+          ps.pose.position.x = state(StateMemberX);
+          ps.pose.position.y = state(StateMemberY);
+          ps.pose.position.z = state(StateMemberZ);
+          ps.pose.orientation.x = quat.x();
+          ps.pose.orientation.y = quat.y();
+          ps.pose.orientation.z = quat.z();
+          ps.pose.orientation.w = quat.w();
+          robotPath.poses.push_back(ps);
+        }
+        robotPath.header.frame_id = mapFrameId_;
+        robotPath.header.stamp = ros::Time::now();
+        pathPub.publish(robotPath);
 
         if (printDiagnostics_)
         {

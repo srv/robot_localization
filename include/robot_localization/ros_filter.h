@@ -43,6 +43,7 @@
 #include <std_msgs/String.h>
 #include <std_srvs/Empty.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/TwistStamped.h>

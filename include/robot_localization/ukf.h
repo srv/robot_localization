@@ -88,6 +88,11 @@ class Ukf: public FilterBase
     //!
     void predict(const double referenceTime, const double delta);
 
+    void smooth()
+    {
+        // nothing here
+    }
+
   protected:
     //! @brief The UKF sigma points
     //!

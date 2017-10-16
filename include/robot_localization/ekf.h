@@ -80,6 +80,33 @@ class Ekf: public FilterBase
     //! @param[in] delta - The time step over which to predict.
     //!
     void predict(const double referenceTime, const double delta);
+
+    void smooth();
+
+  private:
+    //!@brief      Calculates the transfer function.
+    //!
+    //!@param[in]  delta  The time step over which to predict
+    //!@param[in]  state  The state
+    //!
+    //!@return     The transfer function.
+    //!
+    Eigen::MatrixXd computeTransferFunction(
+      const double& delta,
+      const Eigen::VectorXd& state);
+
+    //!@brief      Calculates the transfer function jacobian.
+    //!
+    //!@param[in]  delta             The time step over which to predict
+    //!@param[in]  state             The state
+    //!@param[in]  transferFunction  The transfer function
+    //!
+    //!@return     The transfer function jacobian.
+    //!
+    Eigen::MatrixXd computeTransferFunctionJacobian(
+      const double& delta,
+      const Eigen::VectorXd& state,
+      const Eigen::MatrixXd& transferFunction);
 };
 
 }  // namespace RobotLocalization

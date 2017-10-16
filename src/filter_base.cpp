@@ -62,7 +62,8 @@ namespace RobotLocalization
     debug_(false),
     debugStream_(NULL),
     useControl_(false),
-    useDynamicProcessNoiseCovariance_(false)
+    useDynamicProcessNoiseCovariance_(false),
+    useSmooth_(false)
   {
     reset();
   }
@@ -204,6 +205,18 @@ namespace RobotLocalization
     return state_;
   }
 
+  std::vector<EkfState> FilterBase::getStates(const bool& smoothed) const
+  {
+    if (smoothed)
+    {
+      return smoothed_states_;
+    }
+    else
+    {
+      return past_states_;
+    }
+  }
+
   void FilterBase::processMeasurement(const Measurement &measurement)
   {
     FB_DEBUG("------ FilterBase::processMeasurement (" << measurement.topicName_ << ") ------\n");
@@ -234,6 +247,7 @@ namespace RobotLocalization
       }
 
       correct(measurement);
+      //smooth();
     }
     else
     {

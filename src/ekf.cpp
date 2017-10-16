@@ -198,6 +198,12 @@ namespace RobotLocalization
       // Handle wrapping of angles
       wrapStateAngles();
 
+      // (5) Update the state for posterior smoothing
+      if (past_states_.size() > 0)
+      {
+        past_states_[past_states_.size() - 1].Set(state_, estimateErrorCovariance_);
+      }
+
       FB_DEBUG("Kalman gain subset is:\n" << kalmanGainSubset <<
                "\nInnovation is:\n" << innovationSubset <<
                "\nCorrected full state is:\n" << state_ <<
@@ -206,24 +212,22 @@ namespace RobotLocalization
     }
   }
 
-  void Ekf::predict(const double referenceTime, const double delta)
+  Eigen::MatrixXd Ekf::computeTransferFunction(const double& delta,
+                                               const Eigen::VectorXd& state)
   {
-    FB_DEBUG("---------------------- Ekf::predict ----------------------\n" <<
-             "delta is " << delta << "\n" <<
-             "state is " << state_ << "\n");
-
-    double roll = state_(StateMemberRoll);
-    double pitch = state_(StateMemberPitch);
-    double yaw = state_(StateMemberYaw);
-    double xVel = state_(StateMemberVx);
-    double yVel = state_(StateMemberVy);
-    double zVel = state_(StateMemberVz);
-    double rollVel = state_(StateMemberVroll);
-    double pitchVel = state_(StateMemberVpitch);
-    double yawVel = state_(StateMemberVyaw);
-    double xAcc = state_(StateMemberAx);
-    double yAcc = state_(StateMemberAy);
-    double zAcc = state_(StateMemberAz);
+    Eigen::MatrixXd transferFunction(state.size(), state.size());
+    double roll = state(StateMemberRoll);
+    double pitch = state(StateMemberPitch);
+    double yaw = state(StateMemberYaw);
+    double xVel = state(StateMemberVx);
+    double yVel = state(StateMemberVy);
+    double zVel = state(StateMemberVz);
+    double rollVel = state(StateMemberVroll);
+    double pitchVel = state(StateMemberVpitch);
+    double yawVel = state(StateMemberVyaw);
+    double xAcc = state(StateMemberAx);
+    double yAcc = state(StateMemberAy);
+    double zAcc = state(StateMemberAz);
 
     // We'll need these trig calculations a lot.
     double sp = ::sin(pitch);
@@ -235,39 +239,72 @@ namespace RobotLocalization
     double sy = ::sin(yaw);
     double cy = ::cos(yaw);
 
-    prepareControl(referenceTime, delta);
-
     // Prepare the transfer function
-    transferFunction_(StateMemberX, StateMemberVx) = cy * cp * delta;
-    transferFunction_(StateMemberX, StateMemberVy) = (cy * sp * sr - sy * cr) * delta;
-    transferFunction_(StateMemberX, StateMemberVz) = (cy * sp * cr + sy * sr) * delta;
-    transferFunction_(StateMemberX, StateMemberAx) = 0.5 * transferFunction_(StateMemberX, StateMemberVx) * delta;
-    transferFunction_(StateMemberX, StateMemberAy) = 0.5 * transferFunction_(StateMemberX, StateMemberVy) * delta;
-    transferFunction_(StateMemberX, StateMemberAz) = 0.5 * transferFunction_(StateMemberX, StateMemberVz) * delta;
-    transferFunction_(StateMemberY, StateMemberVx) = sy * cp * delta;
-    transferFunction_(StateMemberY, StateMemberVy) = (sy * sp * sr + cy * cr) * delta;
-    transferFunction_(StateMemberY, StateMemberVz) = (sy * sp * cr - cy * sr) * delta;
-    transferFunction_(StateMemberY, StateMemberAx) = 0.5 * transferFunction_(StateMemberY, StateMemberVx) * delta;
-    transferFunction_(StateMemberY, StateMemberAy) = 0.5 * transferFunction_(StateMemberY, StateMemberVy) * delta;
-    transferFunction_(StateMemberY, StateMemberAz) = 0.5 * transferFunction_(StateMemberY, StateMemberVz) * delta;
-    transferFunction_(StateMemberZ, StateMemberVx) = -sp * delta;
-    transferFunction_(StateMemberZ, StateMemberVy) = cp * sr * delta;
-    transferFunction_(StateMemberZ, StateMemberVz) = cp * cr * delta;
-    transferFunction_(StateMemberZ, StateMemberAx) = 0.5 * transferFunction_(StateMemberZ, StateMemberVx) * delta;
-    transferFunction_(StateMemberZ, StateMemberAy) = 0.5 * transferFunction_(StateMemberZ, StateMemberVy) * delta;
-    transferFunction_(StateMemberZ, StateMemberAz) = 0.5 * transferFunction_(StateMemberZ, StateMemberVz) * delta;
-    transferFunction_(StateMemberRoll, StateMemberVroll) = transferFunction_(StateMemberX, StateMemberVx);
-    transferFunction_(StateMemberRoll, StateMemberVpitch) = transferFunction_(StateMemberX, StateMemberVy);
-    transferFunction_(StateMemberRoll, StateMemberVyaw) = transferFunction_(StateMemberX, StateMemberVz);
-    transferFunction_(StateMemberPitch, StateMemberVroll) = transferFunction_(StateMemberY, StateMemberVx);
-    transferFunction_(StateMemberPitch, StateMemberVpitch) = transferFunction_(StateMemberY, StateMemberVy);
-    transferFunction_(StateMemberPitch, StateMemberVyaw) = transferFunction_(StateMemberY, StateMemberVz);
-    transferFunction_(StateMemberYaw, StateMemberVroll) = transferFunction_(StateMemberZ, StateMemberVx);
-    transferFunction_(StateMemberYaw, StateMemberVpitch) = transferFunction_(StateMemberZ, StateMemberVy);
-    transferFunction_(StateMemberYaw, StateMemberVyaw) = transferFunction_(StateMemberZ, StateMemberVz);
-    transferFunction_(StateMemberVx, StateMemberAx) = delta;
-    transferFunction_(StateMemberVy, StateMemberAy) = delta;
-    transferFunction_(StateMemberVz, StateMemberAz) = delta;
+    transferFunction(StateMemberX, StateMemberVx) = cy * cp * delta;
+    transferFunction(StateMemberX, StateMemberVy) = (cy * sp * sr - sy * cr) * delta;
+    transferFunction(StateMemberX, StateMemberVz) = (cy * sp * cr + sy * sr) * delta;
+    transferFunction(StateMemberX, StateMemberAx) = 0.5 * transferFunction(StateMemberX, StateMemberVx) * delta;
+    transferFunction(StateMemberX, StateMemberAy) = 0.5 * transferFunction(StateMemberX, StateMemberVy) * delta;
+    transferFunction(StateMemberX, StateMemberAz) = 0.5 * transferFunction(StateMemberX, StateMemberVz) * delta;
+    transferFunction(StateMemberY, StateMemberVx) = sy * cp * delta;
+    transferFunction(StateMemberY, StateMemberVy) = (sy * sp * sr + cy * cr) * delta;
+    transferFunction(StateMemberY, StateMemberVz) = (sy * sp * cr - cy * sr) * delta;
+    transferFunction(StateMemberY, StateMemberAx) = 0.5 * transferFunction(StateMemberY, StateMemberVx) * delta;
+    transferFunction(StateMemberY, StateMemberAy) = 0.5 * transferFunction(StateMemberY, StateMemberVy) * delta;
+    transferFunction(StateMemberY, StateMemberAz) = 0.5 * transferFunction(StateMemberY, StateMemberVz) * delta;
+    transferFunction(StateMemberZ, StateMemberVx) = -sp * delta;
+    transferFunction(StateMemberZ, StateMemberVy) = cp * sr * delta;
+    transferFunction(StateMemberZ, StateMemberVz) = cp * cr * delta;
+    transferFunction(StateMemberZ, StateMemberAx) = 0.5 * transferFunction(StateMemberZ, StateMemberVx) * delta;
+    transferFunction(StateMemberZ, StateMemberAy) = 0.5 * transferFunction(StateMemberZ, StateMemberVy) * delta;
+    transferFunction(StateMemberZ, StateMemberAz) = 0.5 * transferFunction(StateMemberZ, StateMemberVz) * delta;
+    transferFunction(StateMemberRoll, StateMemberVroll) = transferFunction(StateMemberX, StateMemberVx);
+    transferFunction(StateMemberRoll, StateMemberVpitch) = transferFunction(StateMemberX, StateMemberVy);
+    transferFunction(StateMemberRoll, StateMemberVyaw) = transferFunction(StateMemberX, StateMemberVz);
+    transferFunction(StateMemberPitch, StateMemberVroll) = transferFunction(StateMemberY, StateMemberVx);
+    transferFunction(StateMemberPitch, StateMemberVpitch) = transferFunction(StateMemberY, StateMemberVy);
+    transferFunction(StateMemberPitch, StateMemberVyaw) = transferFunction(StateMemberY, StateMemberVz);
+    transferFunction(StateMemberYaw, StateMemberVroll) = transferFunction(StateMemberZ, StateMemberVx);
+    transferFunction(StateMemberYaw, StateMemberVpitch) = transferFunction(StateMemberZ, StateMemberVy);
+    transferFunction(StateMemberYaw, StateMemberVyaw) = transferFunction(StateMemberZ, StateMemberVz);
+    transferFunction(StateMemberVx, StateMemberAx) = delta;
+    transferFunction(StateMemberVy, StateMemberAy) = delta;
+    transferFunction(StateMemberVz, StateMemberAz) = delta;
+
+    return transferFunction;
+  }
+
+  Eigen::MatrixXd Ekf::computeTransferFunctionJacobian(
+      const double& delta,
+      const Eigen::VectorXd& state,
+      const Eigen::MatrixXd& transferFunction) {
+    Eigen::MatrixXd transferFunctionJacobian(transferFunction);
+
+    double roll = state(StateMemberRoll);
+    double pitch = state(StateMemberPitch);
+    double yaw = state(StateMemberYaw);
+    double xVel = state(StateMemberVx);
+    double yVel = state(StateMemberVy);
+    double zVel = state(StateMemberVz);
+    double rollVel = state(StateMemberVroll);
+    double pitchVel = state(StateMemberVpitch);
+    double yawVel = state(StateMemberVyaw);
+    double xAcc = state(StateMemberAx);
+    double yAcc = state(StateMemberAy);
+    double zAcc = state(StateMemberAz);
+
+    // We'll need these trig calculations a lot.
+    double sp = 0.0;
+    double cp = 0.0;
+    ::sincos(pitch, &sp, &cp);
+
+    double sr = 0.0;
+    double cr = 0.0;
+    ::sincos(roll, &sr, &cr);
+
+    double sy = 0.0;
+    double cy = 0.0;
+    ::sincos(yaw, &sy, &cy);
 
     // Prepare the transfer function Jacobian. This function is analytically derived from the
     // transfer function.
@@ -330,23 +367,36 @@ namespace RobotLocalization
     double dFY_dP = (xCoeff * rollVel + yCoeff * pitchVel + zCoeff * yawVel) * delta;
 
     // Much of the transfer function Jacobian is identical to the transfer function
-    transferFunctionJacobian_ = transferFunction_;
-    transferFunctionJacobian_(StateMemberX, StateMemberRoll) = dFx_dR;
-    transferFunctionJacobian_(StateMemberX, StateMemberPitch) = dFx_dP;
-    transferFunctionJacobian_(StateMemberX, StateMemberYaw) = dFx_dY;
-    transferFunctionJacobian_(StateMemberY, StateMemberRoll) = dFy_dR;
-    transferFunctionJacobian_(StateMemberY, StateMemberPitch) = dFy_dP;
-    transferFunctionJacobian_(StateMemberY, StateMemberYaw) = dFy_dY;
-    transferFunctionJacobian_(StateMemberZ, StateMemberRoll) = dFz_dR;
-    transferFunctionJacobian_(StateMemberZ, StateMemberPitch) = dFz_dP;
-    transferFunctionJacobian_(StateMemberRoll, StateMemberRoll) = dFR_dR;
-    transferFunctionJacobian_(StateMemberRoll, StateMemberPitch) = dFR_dP;
-    transferFunctionJacobian_(StateMemberRoll, StateMemberYaw) = dFR_dY;
-    transferFunctionJacobian_(StateMemberPitch, StateMemberRoll) = dFP_dR;
-    transferFunctionJacobian_(StateMemberPitch, StateMemberPitch) = dFP_dP;
-    transferFunctionJacobian_(StateMemberPitch, StateMemberYaw) = dFP_dY;
-    transferFunctionJacobian_(StateMemberYaw, StateMemberRoll) = dFY_dR;
-    transferFunctionJacobian_(StateMemberYaw, StateMemberPitch) = dFY_dP;
+    transferFunctionJacobian(StateMemberX, StateMemberRoll) = dFx_dR;
+    transferFunctionJacobian(StateMemberX, StateMemberPitch) = dFx_dP;
+    transferFunctionJacobian(StateMemberX, StateMemberYaw) = dFx_dY;
+    transferFunctionJacobian(StateMemberY, StateMemberRoll) = dFy_dR;
+    transferFunctionJacobian(StateMemberY, StateMemberPitch) = dFy_dP;
+    transferFunctionJacobian(StateMemberY, StateMemberYaw) = dFy_dY;
+    transferFunctionJacobian(StateMemberZ, StateMemberRoll) = dFz_dR;
+    transferFunctionJacobian(StateMemberZ, StateMemberPitch) = dFz_dP;
+    transferFunctionJacobian(StateMemberRoll, StateMemberRoll) = dFR_dR;
+    transferFunctionJacobian(StateMemberRoll, StateMemberPitch) = dFR_dP;
+    transferFunctionJacobian(StateMemberRoll, StateMemberYaw) = dFR_dY;
+    transferFunctionJacobian(StateMemberPitch, StateMemberRoll) = dFP_dR;
+    transferFunctionJacobian(StateMemberPitch, StateMemberPitch) = dFP_dP;
+    transferFunctionJacobian(StateMemberPitch, StateMemberYaw) = dFP_dY;
+    transferFunctionJacobian(StateMemberYaw, StateMemberRoll) = dFY_dR;
+    transferFunctionJacobian(StateMemberYaw, StateMemberPitch) = dFY_dP;
+
+    return transferFunctionJacobian;
+  }
+
+  void Ekf::predict(const double referenceTime, const double delta)
+  {
+    FB_DEBUG("---------------------- Ekf::predict ----------------------\n" <<
+             "delta is " << delta << "\n" <<
+             "state is " << state_ << "\n");
+
+    prepareControl(referenceTime, delta);
+
+    transferFunction_ = computeTransferFunction(delta, state_);
+    transferFunctionJacobian_ = computeTransferFunctionJacobian(delta, state_, transferFunction_);
 
     FB_DEBUG("Transfer function is:\n" << transferFunction_ <<
              "\nTransfer function Jacobian is:\n" << transferFunctionJacobian_ <<
@@ -388,8 +438,37 @@ namespace RobotLocalization
                                 transferFunctionJacobian_.transpose());
     estimateErrorCovariance_.noalias() += delta * (*processNoiseCovariance);
 
+    // (3) Save the state for posterior smoothing
+    EkfState s(delta, state_, estimateErrorCovariance_);
+    past_states_.push_back(s);
+
     FB_DEBUG("Predicted estimate error covariance is:\n" << estimateErrorCovariance_ <<
              "\n\n--------------------- /Ekf::predict ----------------------\n");
   }
 
+  void Ekf::smooth()
+  {
+    if (past_states_.size() < 2)
+    {
+      return;
+    }
+    smoothed_states_.clear();
+    smoothed_states_ = past_states_;
+    for (size_t i = 0; i < past_states_.size() - 1; i++)
+    {
+      EkfState sf(smoothed_states_[past_states_.size() - 1 - i]);
+      EkfState s(past_states_[past_states_.size() - 2 - i]);
+
+      Eigen::MatrixXd transferFunction = computeTransferFunction(s.GetDelta(), s.GetState());
+      Eigen::MatrixXd transferFunctionJacobian = computeTransferFunctionJacobian(s.GetDelta(), s.GetState(), transferFunction);
+      Eigen::MatrixXd estimateErrorCovariance = transferFunctionJacobian*s.GetCov()*transferFunctionJacobian.transpose();
+      estimateErrorCovariance.noalias() += (processNoiseCovariance_ * s.GetDelta());
+
+      Eigen::MatrixXd J = s.GetCov() * transferFunctionJacobian * estimateErrorCovariance.inverse();
+
+      Eigen::VectorXd x_smoothed = s.GetState() + J*(sf.GetState() - transferFunction*s.GetState());
+      Eigen::MatrixXd P_smoothed = s.GetCov() + J*(sf.GetCov() - estimateErrorCovariance)*J.transpose();
+      smoothed_states_[past_states_.size()-2-i].Set(x_smoothed, P_smoothed);
+    }
+  }
 }  // namespace RobotLocalization

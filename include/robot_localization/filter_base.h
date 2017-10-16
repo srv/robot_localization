@@ -52,6 +52,41 @@
 namespace RobotLocalization
 {
 
+struct EkfState {
+  // Delta time between predictions
+  double delta_;
+  // The state and its associated covariance
+  Eigen::VectorXd state_;
+  Eigen::MatrixXd covariance_;
+
+  EkfState(const double& delta, const Eigen::VectorXd& state, const Eigen::MatrixXd& covariance)
+    : delta_(delta), state_(state), covariance_(covariance)
+  {
+    // nothing here
+  }
+
+  void Set(const Eigen::VectorXd& state, const Eigen::MatrixXd& covariance)
+  {
+    state_ = state;
+    covariance_ = covariance;
+  }
+
+  double GetDelta() const
+  {
+    return delta_;
+  }
+
+  Eigen::VectorXd GetState() const
+  {
+    return state_;
+  }
+
+  Eigen::MatrixXd GetCov() const
+  {
+    return covariance_;
+  }
+};
+
 //! @brief Structure used for storing and comparing measurements
 //! (for priority queues)
 //!
@@ -246,6 +281,8 @@ class FilterBase
     //!
     const Eigen::VectorXd& getState();
 
+    std::vector<EkfState> getStates(const bool& smoothed = true) const;
+
     //! @brief Carries out the predict step in the predict/update cycle.
     //! Projects the state and error matrices forward using a model of
     //! the vehicle's motion. This method must be implemented by subclasses.
@@ -280,6 +317,12 @@ class FilterBase
     void setControlParams(const std::vector<int> &updateVector, const double controlTimeout,
       const std::vector<double> &accelerationLimits, const std::vector<double> &accelerationGains,
       const std::vector<double> &decelerationLimits, const std::vector<double> &decelerationGains);
+
+    /**
+     * @brief      Carries out Rauch Tung Striebel smoothing. This method must be implemented by subclasses
+     */
+    virtual void smooth() = 0;
+
 
     //! @brief Sets the filter into debug mode
     //!
@@ -553,6 +596,15 @@ class FilterBase
     //! dynamic process noise covariance matrix
     //!
     bool useDynamicProcessNoiseCovariance_;
+
+    //! @brief Whether or not we apply the control term
+    //!
+    bool useSmooth_;
+
+    //! @brief Holds the last states of the filter
+    //!
+    std::vector<EkfState> past_states_;
+    std::vector<EkfState> smoothed_states_;
 
   private:
     //! @brief Whether or not the filter is in debug mode
