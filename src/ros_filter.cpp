@@ -65,6 +65,7 @@ namespace RobotLocalization
       publishAcceleration_(false),
       twoDMode_(false),
       useControl_(false),
+      useEKS_(false),
       smoothLaggedData_(false),
       disabledAtStartup_(false),
       enabled_(false)
@@ -884,6 +885,9 @@ namespace RobotLocalization
         filter_.setState(eigenState);
       }
     }
+
+    // Check if EKS should be computed
+    nhLocal_.param("use_eks", useEKS_, false);
 
     // Check if the filter should start or not
     nhLocal_.param("disabled_at_startup", disabledAtStartup_, false);
@@ -1765,7 +1769,8 @@ namespace RobotLocalization
 
     // Publisher
     ros::Publisher positionPub = nh_.advertise<nav_msgs::Odometry>("odometry/filtered", 20);
-    ros::Publisher pathPub = nh_.advertise<nav_msgs::Path>("path", 1);
+    ros::Publisher pathPub = nh_.advertise<nav_msgs::Path>("odometry/path", 1);
+    ros::Publisher smoothPathPub = nh_.advertise<nav_msgs::Path>("odometry/path_smoothed", 1);
     tf2_ros::TransformBroadcaster worldTransformBroadcaster;
 
     // Optional acceleration publisher
@@ -1873,31 +1878,62 @@ namespace RobotLocalization
         // Fire off the position and the transform
         positionPub.publish(filteredPosition);
 
-        nav_msgs::Path robotPath;
-        std::vector<EkfState> poses = filter_.getStates();
-        for (size_t i = 0; i < poses.size(); i++)
-        {
-          Eigen::VectorXd state = poses[i].GetState();
+        if (pathPub.getNumSubscribers() > 0) {
+          nav_msgs::Path robotPath;
+          std::vector<EkfState> poses = filter_.getStates(false);
+          for (size_t i = 0; i < poses.size(); i++)
+          {
+            Eigen::VectorXd state = poses[i].GetState();
 
-          // Convert from roll, pitch, and yaw back to quaternion for
-          // orientation values
-          tf2::Quaternion quat;
-          quat.setRPY(state(StateMemberRoll), state(StateMemberPitch), state(StateMemberYaw));
+            // Convert from roll, pitch, and yaw back to quaternion for
+            // orientation values
+            tf2::Quaternion quat;
+            quat.setRPY(state(StateMemberRoll), state(StateMemberPitch), state(StateMemberYaw));
 
-          // Convert to PoseStamped and push to path vector
-          geometry_msgs::PoseStamped ps;
-          ps.pose.position.x = state(StateMemberX);
-          ps.pose.position.y = state(StateMemberY);
-          ps.pose.position.z = state(StateMemberZ);
-          ps.pose.orientation.x = quat.x();
-          ps.pose.orientation.y = quat.y();
-          ps.pose.orientation.z = quat.z();
-          ps.pose.orientation.w = quat.w();
-          robotPath.poses.push_back(ps);
+            // Convert to PoseStamped and push to path vector
+            geometry_msgs::PoseStamped ps;
+            ps.pose.position.x = state(StateMemberX);
+            ps.pose.position.y = state(StateMemberY);
+            ps.pose.position.z = state(StateMemberZ);
+            ps.pose.orientation.x = quat.x();
+            ps.pose.orientation.y = quat.y();
+            ps.pose.orientation.z = quat.z();
+            ps.pose.orientation.w = quat.w();
+            robotPath.poses.push_back(ps);
+          }
+          robotPath.header.frame_id = mapFrameId_;
+          robotPath.header.stamp = ros::Time::now();
+          pathPub.publish(robotPath);
         }
-        robotPath.header.frame_id = mapFrameId_;
-        robotPath.header.stamp = ros::Time::now();
-        pathPub.publish(robotPath);
+
+        if (useEKS_ && smoothPathPub.getNumSubscribers() > 0)
+        {
+          nav_msgs::Path robotSmoothPath;
+          std::vector<EkfState> smooth_poses = filter_.getStates(useEKS_);
+          for (size_t i = 0; i < smooth_poses.size(); i++)
+          {
+            Eigen::VectorXd state = smooth_poses[i].GetState();
+
+            // Convert from roll, pitch, and yaw back to quaternion for
+            // orientation values
+            tf2::Quaternion quat;
+            quat.setRPY(state(StateMemberRoll), state(StateMemberPitch), state(StateMemberYaw));
+
+            // Convert to PoseStamped and push to path vector
+            geometry_msgs::PoseStamped ps;
+            ps.pose.position.x = state(StateMemberX);
+            ps.pose.position.y = state(StateMemberY);
+            ps.pose.position.z = state(StateMemberZ);
+            ps.pose.orientation.x = quat.x();
+            ps.pose.orientation.y = quat.y();
+            ps.pose.orientation.z = quat.z();
+            ps.pose.orientation.w = quat.w();
+            robotSmoothPath.poses.push_back(ps);
+          }
+          robotSmoothPath.header.frame_id = mapFrameId_;
+          robotSmoothPath.header.stamp = ros::Time::now();
+          smoothPathPub.publish(robotSmoothPath);
+        }
 
         if (printDiagnostics_)
         {

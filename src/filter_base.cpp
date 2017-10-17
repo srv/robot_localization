@@ -205,10 +205,11 @@ namespace RobotLocalization
     return state_;
   }
 
-  std::vector<EkfState> FilterBase::getStates(const bool& smoothed) const
+  std::vector<EkfState> FilterBase::getStates(const bool& smoothed)
   {
     if (smoothed)
     {
+      smooth();
       return smoothed_states_;
     }
     else
@@ -247,7 +248,6 @@ namespace RobotLocalization
       }
 
       correct(measurement);
-      //smooth();
     }
     else
     {

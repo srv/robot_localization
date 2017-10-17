@@ -54,13 +54,13 @@ namespace RobotLocalization
 
 struct EkfState {
   // Delta time between predictions
-  double delta_;
+  double time_;
   // The state and its associated covariance
   Eigen::VectorXd state_;
   Eigen::MatrixXd covariance_;
 
-  EkfState(const double& delta, const Eigen::VectorXd& state, const Eigen::MatrixXd& covariance)
-    : delta_(delta), state_(state), covariance_(covariance)
+  EkfState(const double& time, const Eigen::VectorXd& state, const Eigen::MatrixXd& covariance)
+    : time_(time), state_(state), covariance_(covariance)
   {
     // nothing here
   }
@@ -71,9 +71,9 @@ struct EkfState {
     covariance_ = covariance;
   }
 
-  double GetDelta() const
+  double GetTime() const
   {
-    return delta_;
+    return time_;
   }
 
   Eigen::VectorXd GetState() const
@@ -281,7 +281,7 @@ class FilterBase
     //!
     const Eigen::VectorXd& getState();
 
-    std::vector<EkfState> getStates(const bool& smoothed = true) const;
+    std::vector<EkfState> getStates(const bool& smoothed = true);
 
     //! @brief Carries out the predict step in the predict/update cycle.
     //! Projects the state and error matrices forward using a model of

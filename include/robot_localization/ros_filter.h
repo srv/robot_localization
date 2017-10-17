@@ -590,6 +590,10 @@ template<class T> class RosFilter
     //!
     bool useControl_;
 
+    //! @brief Whether or not to smooth the path
+    //!
+    bool useEKS_;
+
     //! @brief Start the Filter disabled at startup
     //!
     //! If this is true, the filter reads parameters and prepares publishers and subscribes
