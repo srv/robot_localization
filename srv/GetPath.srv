@@ -1,0 +1,4 @@
+bool smoothed
+---
+geometry_msgs/PoseWithCovarianceStamped[] poses
+
