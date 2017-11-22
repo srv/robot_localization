@@ -931,6 +931,9 @@ namespace RobotLocalization
     // Create a service for manually enabling the filter
     enableFilterSrv_ = nhLocal_.advertiseService("enable", &RosFilter<T>::enableFilterSrvCallback, this);
 
+    // Create a service to retrieve the complete smooth path
+    getPathSrv_ = nhLocal_.advertiseService("get_path", &RosFilter<T>::getPathSrvCallback, this);
+
     // Init the last last measurement time so we don't get a huge initial delta
     filter_.setLastMeasurementTime(ros::Time::now().toSec());
     filter_.setLastUpdateTime(ros::Time::now().toSec());
@@ -2037,6 +2040,51 @@ namespace RobotLocalization
     msg = boost::make_shared<geometry_msgs::PoseWithCovarianceStamped>(request.pose);
     setPoseCallback(msg);
 
+    return true;
+  }
+
+  template<typename T>
+  bool RosFilter<T>::getPathSrvCallback(robot_localization::GetPath::Request& request,
+                                        robot_localization::GetPath::Response& response)
+  {
+    std::vector<geometry_msgs::PoseWithCovarianceStamped> poses;
+
+    std::vector<EkfState> states = filter_.getStates(request.smoothed);
+    for (size_t i = 0; i < states.size(); i++)
+    {
+      Eigen::VectorXd state = states[i].GetState();
+      Eigen::MatrixXd cov = states[i].GetCov();
+
+      // Convert from roll, pitch, and yaw back to quaternion for
+      // orientation values
+      tf2::Quaternion quat;
+      quat.setRPY(state(StateMemberRoll), state(StateMemberPitch), state(StateMemberYaw));
+
+      // Convert to PoseStamped and push to path vector
+      geometry_msgs::PoseWithCovarianceStamped pose;
+      pose.pose.pose.position.x = state(StateMemberX);
+      pose.pose.pose.position.y = state(StateMemberY);
+      pose.pose.pose.position.z = state(StateMemberZ);
+      pose.pose.pose.orientation.x = quat.x();
+      pose.pose.pose.orientation.y = quat.y();
+      pose.pose.pose.orientation.z = quat.z();
+      pose.pose.pose.orientation.w = quat.w();
+
+      pose.header.seq = i;
+      pose.header.stamp.fromSec(states[i].GetTime());
+      pose.header.frame_id = worldFrameId_;
+      for (size_t a = 0; a < 6; a++)
+      {
+        for (size_t b = 0; b < 6; b++)
+        {
+          pose.pose.covariance[a*6+b] = cov(a,b);
+        }
+      }
+
+      poses.push_back(pose);
+    }
+
+    response.poses = poses;
     return true;
   }
 

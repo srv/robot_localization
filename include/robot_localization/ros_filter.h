@@ -38,6 +38,7 @@
 #include "robot_localization/filter_base.h"
 
 #include <robot_localization/SetPose.h>
+#include <robot_localization/GetPath.h>
 
 #include <ros/ros.h>
 #include <std_msgs/String.h>
@@ -245,6 +246,14 @@ template<class T> class RosFilter
     //! @return true if successful, false if not
     bool setPoseSrvCallback(robot_localization::SetPose::Request& request,
                             robot_localization::SetPose::Response&);
+
+    //!@brief      Service callback to get the path
+    //!@param[in]  request   The request
+    //!@param[out] response  The response
+    //!@return     true if successful, false if not
+    //!
+    bool getPathSrvCallback(robot_localization::GetPath::Request& request,
+                            robot_localization::GetPath::Response& response);
 
     //! @brief Service callback for manually enable the filter
     //! @param[in] request - N/A
@@ -549,6 +558,10 @@ template<class T> class RosFilter
     //! a custom SetPose service.
     //!
     ros::ServiceServer setPoseSrv_;
+
+    //! Service that allows another node to get the whole path
+    //!
+    ros::ServiceServer getPathSrv_;
 
     //! @brief Whether or not we use smoothing
     //!

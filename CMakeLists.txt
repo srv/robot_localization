@@ -42,8 +42,10 @@ roslint_cpp()
 add_service_files(
   FILES
   GetState.srv
+  GetPath.srv
   SetDatum.srv
   SetPose.srv
+  GetPose.srv
 )
 
 generate_messages(
@@ -56,7 +58,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS
     include
-  LIBRARIES 
+  LIBRARIES
     ekf
     filter_base
     filter_utilities
