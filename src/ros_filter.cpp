@@ -43,6 +43,8 @@
 #include <utility>
 #include <vector>
 #include <limits>
+#include <iostream>
+#include <fstream>
 
 namespace RobotLocalization
 {
@@ -2049,6 +2051,11 @@ namespace RobotLocalization
   {
     std::vector<geometry_msgs::PoseWithCovarianceStamped> poses;
 
+    std::ofstream csv_file;
+    csv_file.open ("full_states.csv");
+    csv_file << "stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,vroll,vpitch,vyaw\n";
+    csv_file << std::fixed << std::setprecision(20);
+
     std::vector<EkfState> states = filter_.getStates(request.smoothed);
     for (size_t i = 0; i < states.size(); i++)
     {
@@ -2070,6 +2077,21 @@ namespace RobotLocalization
       pose.pose.pose.orientation.z = quat.z();
       pose.pose.pose.orientation.w = quat.w();
 
+      csv_file << states[i].GetTime() << ",";
+      csv_file << state(StateMemberX) << ",";
+      csv_file << state(StateMemberY) << ",";
+      csv_file << state(StateMemberZ) << ",";
+      csv_file << quat.x() << ",";
+      csv_file << quat.y() << ",";
+      csv_file << quat.z() << ",";
+      csv_file << quat.w() << ",";
+      csv_file << state(StateMemberVx) << ",";
+      csv_file << state(StateMemberVy) << ",";
+      csv_file << state(StateMemberVz) << ",";
+      csv_file << state(StateMemberVroll) << ",";
+      csv_file << state(StateMemberVpitch) << ",";
+      csv_file << state(StateMemberVyaw) << "\n";
+
       pose.header.seq = i;
       pose.header.stamp.fromSec(states[i].GetTime());
       pose.header.frame_id = worldFrameId_;
@@ -2085,6 +2107,7 @@ namespace RobotLocalization
     }
 
     response.poses = poses;
+    csv_file.close();
     return true;
   }
 
