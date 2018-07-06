@@ -889,7 +889,8 @@ namespace RobotLocalization
     }
 
     // Check if EKS should be computed
-    nhLocal_.param("use_eks", useEKS_, false);
+    nhLocal_.param("use_eks", useEKS_, true);
+
 
     // Check if the filter should start or not
     nhLocal_.param("disabled_at_startup", disabledAtStartup_, false);
